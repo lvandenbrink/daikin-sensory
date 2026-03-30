@@ -1,25 +1,35 @@
-# daikin-controller-cloud
+# daikin-sensory
 
-[![NPM version](http://img.shields.io/npm/v/daikin-controller-cloud.svg)](https://www.npmjs.com/package/daikin-controller-cloud)
-[![Downloads](https://img.shields.io/npm/dm/daikin-controller-cloud.svg)](https://www.npmjs.com/package/daikin-controller-cloud)
-![Test and Release](https://github.com/Apollon77/daikin-controller-cloud/workflows/Test%20and%20Release/badge.svg)
-
-Library to generate/retrieve tokens to communicate with the Daikin cloud and to control Daikin devices via the cloud adapters like (BRP069C4x). The Library uses the new Daikin Europe Developer cloud API since v2.0.0.
+Fork of [daikin-controller-cloud](https://github.com/Apollon77/daikin-controller-cloud) that reads Daikin Onecta cloud device details and publishes normalized sensor data to MQTT every 15 minutes. The library uses the new Daikin Europe Developer cloud API since v2.0.0.
 
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
 **Daikin is a trademark of DAIKIN INDUSTRIES, LTD.**
 
 ## Description
+This project uses the upstream OIDC and Daikin Onecta API integration to query
+device information and publish selected sensory values to MQTT in a stable format, for example:
+
+```js
+{
+   timestamp: '2026-03-27T11:01:59.057Z',
+   name: 'AC',
+   state: 'off',
+   operationMode: 'auto',
+   indoorTemperature: 21,
+   outdoorTemperature: 12,
+   targetTemperature: 20
+}
+```
+
+The default polling interval is 15 minutes to stay within the Daikin API rate
+limits.
+
 The newer Daikin devices sold since 2020 contain a newer Wifi Adapter
 (e.g. BRP069C4x) which only connects to the Daikin Cloud and is no longer
 reachable locally. These devices are only controllable through the Daikin
 Onecta API, which uses the OpenID Connect (OIDC) protocol for client
 authentication and authorization purposes.
-
-This library facilitates interacting with the Onecta API by providing an
-abstraction over OIDC flows and token management.
-
 Note: For devices with older WLAN-Adapters like **BRP069A4x** which can only be
 used by the Daikin Controller App please use the
 [Daikin-Controller](https://github.com/Apollon77/daikin-controller) lib instead.
@@ -62,12 +72,28 @@ SSL/TLS certificate, which will cause your browser to present you with a securit
 
 [p1]: https://developer.cloud.daikineurope.com
 
-## Install
+## Run instructions
 
-`npm i daikin-controller-cloud`
+Set the environment variables: 
 
-## Code-Usage example
-See [`src/example.ts`](./src/example.ts).
+```bash
+OIDC_CLIENT_ID=your_client_id
+OIDC_CLIENT_SECRET=your_client_secret
+OIDC_TOKEN_SET_FILE_PATH=.daikin-controller-cloud-tokenset
+MQTT_URL=mqtt://127.0.0.1:1883
+MQTT_USERNAME=optional_user
+MQTT_PASSWORD=optional_password
+MQTT_TOPIC_PREFIX=daikin/sensory
+```
+
+### Build and run
+
+```bash
+npm run build
+npm run start
+```
+
+On first start, complete the Onecta browser authorization flow shown in the terminal output.
 
 ## DaikinControllerCloud options overview
 
@@ -79,6 +105,7 @@ See [`src/example.ts`](./src/example.ts).
 | `oidcCallbackServerBaseUrl`         | Maybe, see desc | The full externally reachable callback URl including protocol, domain/ip/basepath. If not provided will be build internally using `oidcCallbackServerExternalAddress`or `oidcCallbackServerBindAddr` and `oidcCallbackServerPort` |                                   |
 | `oidcCallbackServerPort`            | Maybe, see desc | The port the callback server listens on, required when `customOidcCodeReceiver` is not used.                                                                                                                                      |                                   |
 | `oidcCallbackServerBindAddr`        | No              | The address the callback server listens on, required when `customOidcCodeReceiver` is not used.                                                                                                                                   | `                                 |
+| `oidcCallbackServerProtocol`        | No              | The callback protocol. To run the server on `http` of `https`.                                                           | `                                 |
 | `oidcAuthorizationTimeoutS`         | Yes             | The timeout in seconds for the OIDC authorization flow                                                                                                                                                                            |                                   |
 | `oidcTokenSetFilePath`              | No              | The path to a file where the token set is stored. When not set the tokens are _not_ persisted and application need to listen to "token_updated" event and store and restore itself!                                               |                                   |
 | `certificatePathCert`               | No              | The path to the SSL certificate                                                                                                                                                                                                   | `./cert/cert.key` in library root |
@@ -86,101 +113,3 @@ See [`src/example.ts`](./src/example.ts).
 | `onectaOidcAuthThankYouHtml`        | No              | The HTML content to be displayed after successful OIDC authorization, requiored when `customOidcCodeReceiver` is not used                                                                                                         |                                   |
 | `customOidcCodeReceiver`            | No              | A custom function to receive the OIDC code. WHen this is used the library donot start any Webservcer and application needs to handle this.                                                                                        |                                   |
 | `tokenSet`                          | No              | A token set to be used initially when no token file is stored                                                                                                                                                                     |                                   |
-
-## Issue reporting and enhancements
-* Create Issues here in Github
-* Provide PRs for actual changes and enhancements to code or documentation!
-
-## Todos
-* Generate SSL Certs automatically
-* Mooooaaar documentation
-* Add Tests
-
-## Changelog:
-### 2.4.3 (2025-05-24)
-* (@Apollon77) Fixed timeout handling for OpenId Authorization flow
-
-### 2.4.2 (2024-09-27)
-* (Apollon77) Use 5min as default for oidcAuthorizationTimeoutS if not set
-
-### 2.4.1 (2024-09-27)
-* (Apollon77) Increase timeout for openid client to 10s (3.5s before)
-
-### 2.4.0 (2024-07-17)
-* (Apollon77) Allows to ignore the check if a state is writable on setData
-
-### 2.3.0 (2024-07-12)
-* (Apollon77) Block API request maximum for 24h and then check again
-* (jacoscaz) Bind to 0.0.0.0 by default and select port automatically if not provided
-
-### 2.2.0 (2024-07-07)
-* (Apollon77) Block communication in client class when rate limited according to Daikin response
-
-### 2.1.1 (2024-07-05)
-* (Apollon77) Expose the Rate limit error retryAfter time in the error object
-
-### 2.0.0 (2024-07-05)
-* BREAKING: Username/Passwort and Proxy Authentications are removed and replaced by the new Daikin Portal Authentication! You need to re-authenticate!
-* BREAKING: DaikinCloudController class constructor changed and has new options structure!
-* Minimum Node.js version is 18.2
-* (jacoscaz) Ports to Typescript
-* (jacoscaz) Switches to Daikin's OIDC-based Onecta API
-* (Apollon77) Enhancements to restore some make sure former functionality is still possible to use
-* (Apollon77) Enhances DaikinCloudController class to update data for all devices with one call to save requests
-* (Apollon77) Enhances DaikinDevice classes to emit an "updated" event when data is updated, so it's easier to listen for changes
-* (jacoscaz/Apollon77) Expose rate limit information and own error class for rate limit handling
-
-### 1.2.4 (2023-09-09)
-* (Apollon77) Make sure to store only existing refresh tokens
-
-### 1.2.3 (2023-09-06)
-* (ptz0n) Making sure to really store Refresh tokens on update
-
-### 1.2.2 (2023-09-03)
-* (Apollon77) make sure isCloudConnectionUp is always a boolean
-
-### 1.2.1 (2023-08-29)
-* (Apollon77) Use field timestamp to report the last update time of the data
-
-### 1.2.0 (2023-08-29)
-* (Apollon77) Add parsing support for Altherma electrical device data, missing "unit" is added to the data
-
-### 1.1.0 (2023-08-23)
-* (Apollon77) Fix crash cases
-* (Apollon77) Path certificate creation to be only 1 year
-
-### 1.0.4 (2022-08-13)
-* (Apollon77) Fix potential crash case with Proxy stop
-
-### 1.0.3 (2022-06-03)
-* (Apollon77) Fix potential crash case
-
-### 1.0.2 (2022-05-27)
-* (Apollon77) Fix potential crash case
-
-### 1.0.1 (2022-05-23)
-* (Apollon77) Optimize login handling
-
-### 1.0.0 (2022-05-22)
-* BREAKING: Drop Node.js 10.x; support for LTS versions of Node.js
-* (Apollon77) Update dependencies to latest versions and make library compatible again to them
-* (Apollon77) Split the options initialization for Proxy and it's defaults to the proxy class
-
-### 0.2.1 (2022-02-20)
-* (uKL) Expose isCloudConnectionUp as own method on device
-* (uKL) prevent crash when some data from devices are still null after new addition to cloud
-* (DrHauss ) Added timeout and retry to got requests
-
-### 0.2.0 (2021-07-30)
-* (csu333) Add direct login method using email/password as second option beside proxy
-* (csu333) Add direct login also to tokensaver.js
-
-### 0.1.3 (2021-07-16)
-* (gigatexel ) Added tokensaver.js
-* (gigatexel/Apollon77) Added script to auto-generate binaries based on tokensaver.js
-
-### 0.1.1 (2021-03-29)
-* (Apollon77) Initial release version
-
-### 0.0.x
-* (Apollon77) Initial version

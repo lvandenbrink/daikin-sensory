@@ -41,6 +41,7 @@ export interface OnectaClientConfig {
     oidcClientSecret: string;
     oidcCallbackServerExternalAddress?: string;
     oidcCallbackServerBaseUrl?: string;
+    oidcCallbackServerProtocol?: 'http' | 'https';
     oidcCallbackServerPort?: number;
     oidcCallbackServerBindAddr?: string;
     oidcAuthorizationTimeoutS?: number;
